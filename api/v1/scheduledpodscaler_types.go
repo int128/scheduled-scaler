@@ -28,8 +28,12 @@ type ScheduledPodScalerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ScheduledPodScaler. Edit ScheduledPodScaler_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	ScaleTargetRef ScaleTargetRef `json:"scaleTargetRef,omitempty"`
+}
+
+type ScaleTargetRef struct {
+	// +optional
+	Selectors map[string]string `json:"selectors,omitempty"`
 }
 
 // ScheduledPodScalerStatus defines the observed state of ScheduledPodScaler

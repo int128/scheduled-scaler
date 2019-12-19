@@ -18,8 +18,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
+	kapps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,10 +40,32 @@ type ScheduledPodScalerReconciler struct {
 // +kubebuilder:rbac:groups=scheduledscaling.int128.github.io,resources=scheduledpodscalers/status,verbs=get;update;patch
 
 func (r *ScheduledPodScalerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("scheduledpodscaler", req.NamespacedName)
+	ctx := context.Background()
+	log := r.Log.WithValues("scheduledpodscaler", req.NamespacedName)
 
-	// your logic here
+	var scheduledPodScalerList scheduledscalingv1.ScheduledPodScalerList
+	if err := r.List(ctx, &scheduledPodScalerList, client.InNamespace(req.Namespace)); err != nil {
+		log.Error(err, "could not list the ScheduledScalingList")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	log.Info(fmt.Sprintf("found %d ScheduledPodScalers", len(scheduledPodScalerList.Items)))
+
+	for _, scheduledPodScaler := range scheduledPodScalerList.Items {
+		selectors := client.MatchingLabels(scheduledPodScaler.Spec.ScaleTargetRef.Selectors)
+		log.Info("finding deployments by labels", "selectors", selectors)
+		var deploymentList kapps.DeploymentList
+		if err := r.List(ctx, &deploymentList, selectors); err != nil {
+			log.Error(err, "could not list the DeploymentList")
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
+		log.Info(fmt.Sprintf("found %d Deployments", len(deploymentList.Items)))
+
+		for _, deploymentItem := range deploymentList.Items {
+			log.Info(fmt.Sprintf("the Deployment %s:%s has %d pod(s)",
+				deploymentItem.Namespace, deploymentItem.Name,
+				*deploymentItem.Spec.Replicas))
+		}
+	}
 
 	return ctrl.Result{}, nil
 }

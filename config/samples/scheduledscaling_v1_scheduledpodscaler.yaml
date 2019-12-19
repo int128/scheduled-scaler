@@ -3,5 +3,6 @@ kind: ScheduledPodScaler
 metadata:
   name: scheduledpodscaler-sample
 spec:
-  # Add fields here
-  foo: bar
+  scaleTargetRef:
+    selectors:
+      app: echoserver

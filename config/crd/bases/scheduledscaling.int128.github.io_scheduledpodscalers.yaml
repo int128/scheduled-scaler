@@ -34,10 +34,13 @@ spec:
         spec:
           description: ScheduledPodScalerSpec defines the desired state of ScheduledPodScaler
           properties:
-            foo:
-              description: Foo is an example field of ScheduledPodScaler. Edit ScheduledPodScaler_types.go
-                to remove/update
-              type: string
+            scaleTargetRef:
+              properties:
+                selectors:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
           type: object
         status:
           description: ScheduledPodScalerStatus defines the observed state of ScheduledPodScaler
