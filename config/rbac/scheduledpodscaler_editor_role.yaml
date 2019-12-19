@@ -1,0 +1,26 @@
+# permissions to do edit scheduledpodscalers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scheduledpodscaler-editor-role
+rules:
+- apiGroups:
+  - scheduledscaling.int128.github.io
+  resources:
+  - scheduledpodscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scheduledscaling.int128.github.io
+  resources:
+  - scheduledpodscalers/status
+  verbs:
+  - get
+  - patch
+  - update
