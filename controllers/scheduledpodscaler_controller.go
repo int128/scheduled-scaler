@@ -51,20 +51,29 @@ func (r *ScheduledPodScalerReconciler) Reconcile(req ctrl.Request) (ctrl.Result,
 	log.Info(fmt.Sprintf("found %d ScheduledPodScalers", len(scheduledPodScalerList.Items)))
 
 	for _, scheduledPodScaler := range scheduledPodScalerList.Items {
-		selectors := client.MatchingLabels(scheduledPodScaler.Spec.ScaleTargetRef.Selectors)
-		log.Info("finding deployments by labels", "selectors", selectors)
-		var deploymentList kapps.DeploymentList
-		if err := r.List(ctx, &deploymentList, selectors); err != nil {
-			log.Error(err, "could not list the DeploymentList")
-			return ctrl.Result{}, client.IgnoreNotFound(err)
+		result, err := r.reconcileScheduledPodScaler(ctx, log, scheduledPodScaler)
+		if err != nil {
+			return result, err
 		}
-		log.Info(fmt.Sprintf("found %d Deployments", len(deploymentList.Items)))
+	}
 
-		for _, deploymentItem := range deploymentList.Items {
-			log.Info(fmt.Sprintf("the Deployment %s:%s has %d pod(s)",
-				deploymentItem.Namespace, deploymentItem.Name,
-				*deploymentItem.Spec.Replicas))
-		}
+	return ctrl.Result{}, nil
+}
+
+func (r *ScheduledPodScalerReconciler) reconcileScheduledPodScaler(ctx context.Context, log logr.Logger, scheduledPodScaler scheduledscalingv1.ScheduledPodScaler) (ctrl.Result, error) {
+	selectors := client.MatchingLabels(scheduledPodScaler.Spec.ScaleTargetRef.Selectors)
+	log.Info("finding deployments by labels", "selectors", selectors)
+	var deploymentList kapps.DeploymentList
+	if err := r.List(ctx, &deploymentList, selectors); err != nil {
+		log.Error(err, "could not list the DeploymentList")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	log.Info(fmt.Sprintf("found %d Deployments", len(deploymentList.Items)))
+
+	for _, deploymentItem := range deploymentList.Items {
+		log.Info(fmt.Sprintf("the Deployment %s:%s has %d pod(s)",
+			deploymentItem.Namespace, deploymentItem.Name,
+			*deploymentItem.Spec.Replicas))
 	}
 
 	return ctrl.Result{}, nil
