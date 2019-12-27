@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewDailyRange(t *testing.T) {
-	t.Run("NonZero", func(t *testing.T) {
+	t.Run("StartTime<EndTime", func(t *testing.T) {
 		got, err := schedule.NewDailyRange("01:23:45", "23:45:06")
 		if err != nil {
 			t.Errorf("NewDailyRange error: %s", err)
@@ -17,6 +17,19 @@ func TestNewDailyRange(t *testing.T) {
 		want := &schedule.DailyRange{
 			StartTime: parseDuration(t, "1h23m45s"),
 			EndTime:   parseDuration(t, "23h45m6s"),
+		}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("mismatch (-want +got):\n%s", diff)
+		}
+	})
+	t.Run("EndTime<StartTime", func(t *testing.T) {
+		got, err := schedule.NewDailyRange("23:45:06", "01:23:45")
+		if err != nil {
+			t.Errorf("NewDailyRange error: %s", err)
+		}
+		want := &schedule.DailyRange{
+			StartTime: parseDuration(t, "23h45m6s"),
+			EndTime:   parseDuration(t, "25h23m45s"),
 		}
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Errorf("mismatch (-want +got):\n%s", diff)
@@ -117,66 +130,71 @@ func TestDailyRange_IsActive(t *testing.T) {
 	}
 }
 
-func TestDailyRange_NextStartTime(t *testing.T) {
+func TestDailyRange_NextEdge(t *testing.T) {
 	tests := func(t *testing.T, tz *time.Location) {
-		t.Run("Today", func(t *testing.T) {
-			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
+		t.Run("StartTime<EndTime", func(t *testing.T) {
+			// 01:23:45 (today)
+			// 23:45:06 (today)
+			dailyRange, err := schedule.NewDailyRange("01:23:45", "23:45:06")
 			if err != nil {
 				t.Fatalf("NewDailyRange error: %s", err)
 			}
-			now := time.Date(2019, 12, 3, 1, 5, 6, 0, tz)
-			got := daily.NextStartTime(now)
-			want := time.Date(2019, 12, 3, 1, 23, 45, 0, tz)
-			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("mismatch (-want +got):\n%s", diff)
-			}
+			t.Run("BeforeStart", func(t *testing.T) {
+				now := time.Date(2019, 12, 3, 1, 0, 0, 0, tz)
+				got := dailyRange.NextEdge(now)
+				want := time.Date(2019, 12, 3, 1, 23, 45, 0, tz)
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("mismatch (-want +got):\n%s", diff)
+				}
+			})
+			t.Run("AfterStartBeforeEnd", func(t *testing.T) {
+				now := time.Date(2019, 12, 3, 2, 0, 0, 0, tz)
+				got := dailyRange.NextEdge(now)
+				want := time.Date(2019, 12, 3, 23, 45, 6, 0, tz)
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("mismatch (-want +got):\n%s", diff)
+				}
+			})
+			t.Run("AfterEnd", func(t *testing.T) {
+				now := time.Date(2019, 12, 3, 23, 50, 0, 0, tz)
+				got := dailyRange.NextEdge(now)
+				want := time.Date(2019, 12, 4, 1, 23, 45, 0, tz)
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("mismatch (-want +got):\n%s", diff)
+				}
+			})
 		})
-		t.Run("Tomorrow", func(t *testing.T) {
-			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
+		t.Run("EndTime<StartTime", func(t *testing.T) {
+			// 23:45:06 (today)
+			// 01:23:45 (tomorrow +1)
+			dailyRange, err := schedule.NewDailyRange("23:45:06", "01:23:45")
 			if err != nil {
 				t.Fatalf("NewDailyRange error: %s", err)
 			}
-			now := time.Date(2019, 12, 3, 2, 5, 6, 0, tz)
-			got := daily.NextStartTime(now)
-			want := time.Date(2019, 12, 4, 1, 23, 45, 0, tz)
-			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
-
-	for _, tz := range timezones {
-		t.Run(tz.String(), func(t *testing.T) {
-			tests(t, tz)
-		})
-	}
-}
-
-func TestDailyRange_NextEndTime(t *testing.T) {
-	tests := func(t *testing.T, tz *time.Location) {
-		t.Run("Today", func(t *testing.T) {
-			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
-			if err != nil {
-				t.Fatalf("NewDailyRange error: %s", err)
-			}
-			now := time.Date(2019, 12, 3, 4, 5, 6, 0, tz)
-			got := daily.NextEndTime(now)
-			want := time.Date(2019, 12, 3, 23, 45, 6, 0, tz)
-			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("mismatch (-want +got):\n%s", diff)
-			}
-		})
-		t.Run("Tomorrow", func(t *testing.T) {
-			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
-			if err != nil {
-				t.Fatalf("NewDailyRange error: %s", err)
-			}
-			now := time.Date(2019, 12, 3, 23, 50, 6, 0, tz)
-			got := daily.NextEndTime(now)
-			want := time.Date(2019, 12, 4, 23, 45, 6, 0, tz)
-			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("mismatch (-want +got):\n%s", diff)
-			}
+			t.Run("BeforeEnd", func(t *testing.T) {
+				now := time.Date(2019, 12, 3, 1, 0, 0, 0, tz)
+				got := dailyRange.NextEdge(now)
+				want := time.Date(2019, 12, 3, 23, 45, 6, 0, tz)
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("mismatch (-want +got):\n%s", diff)
+				}
+			})
+			t.Run("BeforeStart", func(t *testing.T) {
+				now := time.Date(2019, 12, 3, 23, 0, 0, 0, tz)
+				got := dailyRange.NextEdge(now)
+				want := time.Date(2019, 12, 3, 23, 45, 6, 0, tz)
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("mismatch (-want +got):\n%s", diff)
+				}
+			})
+			t.Run("AfterStart", func(t *testing.T) {
+				now := time.Date(2019, 12, 3, 23, 50, 0, 0, tz)
+				got := dailyRange.NextEdge(now)
+				want := time.Date(2019, 12, 4, 1, 23, 45, 0, tz)
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("mismatch (-want +got):\n%s", diff)
+				}
+			})
 		})
 	}
 
