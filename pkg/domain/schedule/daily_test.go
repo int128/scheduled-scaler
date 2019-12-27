@@ -63,6 +63,19 @@ func parseDuration(t *testing.T, s string) time.Duration {
 	return d
 }
 
+var timezones = []*time.Location{
+	time.UTC,
+	mustLocation(time.LoadLocation("Asia/Tokyo")),
+	mustLocation(time.LoadLocation("America/Los_Angeles")),
+}
+
+func mustLocation(l *time.Location, err error) *time.Location {
+	if err != nil {
+		panic(err)
+	}
+	return l
+}
+
 func TestDailyRange_IsActive(t *testing.T) {
 	tests := func(t *testing.T, tz *time.Location) {
 		t.Run("InRange", func(t *testing.T) {
@@ -97,21 +110,79 @@ func TestDailyRange_IsActive(t *testing.T) {
 		})
 	}
 
-	t.Run("UTC", func(t *testing.T) {
-		tests(t, time.UTC)
-	})
-	t.Run("Asia/Tokyo", func(t *testing.T) {
-		tz, err := time.LoadLocation("Asia/Tokyo")
-		if err != nil {
-			t.Fatalf("could not load the location: %s", err)
-		}
-		tests(t, tz)
-	})
-	t.Run("America/Los_Angeles", func(t *testing.T) {
-		tz, err := time.LoadLocation("America/Los_Angeles")
-		if err != nil {
-			t.Fatalf("could not load the location: %s", err)
-		}
-		tests(t, tz)
-	})
+	for _, tz := range timezones {
+		t.Run(tz.String(), func(t *testing.T) {
+			tests(t, tz)
+		})
+	}
+}
+
+func TestDailyRange_NextStartTime(t *testing.T) {
+	tests := func(t *testing.T, tz *time.Location) {
+		t.Run("Today", func(t *testing.T) {
+			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
+			if err != nil {
+				t.Fatalf("NewDailyRange error: %s", err)
+			}
+			now := time.Date(2019, 12, 3, 1, 5, 6, 0, tz)
+			got := daily.NextStartTime(now)
+			want := time.Date(2019, 12, 3, 1, 23, 45, 0, tz)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+		t.Run("Tomorrow", func(t *testing.T) {
+			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
+			if err != nil {
+				t.Fatalf("NewDailyRange error: %s", err)
+			}
+			now := time.Date(2019, 12, 3, 2, 5, 6, 0, tz)
+			got := daily.NextStartTime(now)
+			want := time.Date(2019, 12, 4, 1, 23, 45, 0, tz)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+
+	for _, tz := range timezones {
+		t.Run(tz.String(), func(t *testing.T) {
+			tests(t, tz)
+		})
+	}
+}
+
+func TestDailyRange_NextEndTime(t *testing.T) {
+	tests := func(t *testing.T, tz *time.Location) {
+		t.Run("Today", func(t *testing.T) {
+			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
+			if err != nil {
+				t.Fatalf("NewDailyRange error: %s", err)
+			}
+			now := time.Date(2019, 12, 3, 4, 5, 6, 0, tz)
+			got := daily.NextEndTime(now)
+			want := time.Date(2019, 12, 3, 23, 45, 6, 0, tz)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+		t.Run("Tomorrow", func(t *testing.T) {
+			daily, err := schedule.NewDailyRange("01:23:45", "23:45:06")
+			if err != nil {
+				t.Fatalf("NewDailyRange error: %s", err)
+			}
+			now := time.Date(2019, 12, 3, 23, 50, 6, 0, tz)
+			got := daily.NextEndTime(now)
+			want := time.Date(2019, 12, 4, 23, 45, 6, 0, tz)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+
+	for _, tz := range timezones {
+		t.Run(tz.String(), func(t *testing.T) {
+			tests(t, tz)
+		})
+	}
 }

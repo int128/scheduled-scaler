@@ -32,7 +32,30 @@ type DailyRange struct {
 // IsActive returns true if t is in the range.
 // This function depends on the timezone of t.
 func (d *DailyRange) IsActive(t time.Time) bool {
-	day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
-	since := t.Sub(day)
+	since := t.Sub(truncateDay(t))
 	return d.StartTime < since && since < d.EndTime
+}
+
+// NextStartTime returns the next StartTime.
+// If the StartTime is over, it returns the StartTime of tomorrow.
+func (d *DailyRange) NextStartTime(t time.Time) time.Time {
+	next := truncateDay(t).Add(d.StartTime)
+	if next.Before(t) {
+		return next.AddDate(0, 0, 1)
+	}
+	return next
+}
+
+// NextEndTime returns the next EndTime.
+// If the EndTime is over, it returns the EndTime of tomorrow.
+func (d *DailyRange) NextEndTime(t time.Time) time.Time {
+	next := truncateDay(t).Add(d.EndTime)
+	if next.Before(t) {
+		return next.AddDate(0, 0, 1)
+	}
+	return next
+}
+
+func truncateDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
