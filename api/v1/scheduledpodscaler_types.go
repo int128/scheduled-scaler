@@ -29,11 +29,28 @@ type ScheduledPodScalerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	ScaleTargetRef ScaleTargetRef `json:"scaleTargetRef,omitempty"`
+
+	Rules []Rule `json:"rules,omitempty"`
 }
 
 type ScaleTargetRef struct {
 	// +optional
 	Selectors map[string]string `json:"selectors,omitempty"`
+}
+
+type Rule struct {
+	Spec Spec `json:"spec,omitempty"`
+	// +optional
+	Daily *Daily `json:"daily,omitempty"`
+}
+
+type Daily struct {
+	StartTime string `json:"startTime,omitempty"`
+	EndTime   string `json:"endTime,omitempty"`
+}
+
+type Spec struct {
+	Replicas int32 `json:"replicas,omitempty"`
 }
 
 // ScheduledPodScalerStatus defines the observed state of ScheduledPodScaler

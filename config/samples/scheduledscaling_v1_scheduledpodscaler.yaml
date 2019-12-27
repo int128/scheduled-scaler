@@ -6,3 +6,9 @@ spec:
   scaleTargetRef:
     selectors:
       app: echoserver
+  rules:
+    - daily:
+        startTime: 20:46:00
+        endTime: 20:50:00
+      spec:
+        replicas: 10

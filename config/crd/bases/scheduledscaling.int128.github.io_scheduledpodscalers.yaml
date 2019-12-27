@@ -34,6 +34,24 @@ spec:
         spec:
           description: ScheduledPodScalerSpec defines the desired state of ScheduledPodScaler
           properties:
+            rules:
+              items:
+                properties:
+                  daily:
+                    properties:
+                      endTime:
+                        type: string
+                      startTime:
+                        type: string
+                    type: object
+                  spec:
+                    properties:
+                      replicas:
+                        format: int32
+                        type: integer
+                    type: object
+                type: object
+              type: array
             scaleTargetRef:
               properties:
                 selectors:

@@ -19,8 +19,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/int128/scheduled-scaler/pkg/usecases/reconcile"
 	kapps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -50,33 +52,64 @@ func (r *ScheduledPodScalerReconciler) Reconcile(req ctrl.Request) (ctrl.Result,
 	}
 	log.Info(fmt.Sprintf("found %d ScheduledPodScalers", len(scheduledPodScalerList.Items)))
 
-	for _, scheduledPodScaler := range scheduledPodScalerList.Items {
-		result, err := r.reconcileScheduledPodScaler(ctx, log, scheduledPodScaler)
-		if err != nil {
-			return result, err
+	var tp timeProvider
+	reconcileUseCase := reconcile.Reconcile{
+		Log:          log,
+		TimeProvider: &tp,
+	}
+	input := reconcile.Input{ScheduledPodScalerList: scheduledPodScalerList}
+	output, err := reconcileUseCase.Do(input)
+	if err != nil {
+		log.Error(err, "could not determine reconciling", "input", input)
+	}
+
+	for _, cmd := range output.ScaleCommands {
+		if err := scaleDeployments(ctx, r.Client, log, cmd.ScaleTargetRef, cmd.Spec); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
+	if !output.NextReconcileTime.IsZero() {
+		requeueAfter := output.NextReconcileTime.Sub(tp.Now())
+		log.Info(fmt.Sprintf("requeue after %s", requeueAfter))
+		return ctrl.Result{
+			Requeue:      true,
+			RequeueAfter: requeueAfter,
+		}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
-func (r *ScheduledPodScalerReconciler) reconcileScheduledPodScaler(ctx context.Context, log logr.Logger, scheduledPodScaler scheduledscalingv1.ScheduledPodScaler) (ctrl.Result, error) {
-	selectors := client.MatchingLabels(scheduledPodScaler.Spec.ScaleTargetRef.Selectors)
-	log.Info("finding deployments by labels", "selectors", selectors)
+type timeProvider struct{}
+
+func (t timeProvider) Now() time.Time {
+	return time.Now()
+}
+
+//TODO: move to use-case
+func scaleDeployments(ctx context.Context, c client.Client, log logr.Logger, ref scheduledscalingv1.ScaleTargetRef, spec scheduledscalingv1.Spec) error {
+	labels := client.MatchingLabels(ref.Selectors)
+	log.Info("finding deployments by labels", "labels", labels)
 	var deploymentList kapps.DeploymentList
-	if err := r.List(ctx, &deploymentList, selectors); err != nil {
+	if err := c.List(ctx, &deploymentList, labels); err != nil {
 		log.Error(err, "could not list the DeploymentList")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return client.IgnoreNotFound(err)
 	}
 	log.Info(fmt.Sprintf("found %d Deployments", len(deploymentList.Items)))
 
 	for _, deploymentItem := range deploymentList.Items {
-		log.Info(fmt.Sprintf("the Deployment %s:%s has %d pod(s)",
+		log.Info(fmt.Sprintf("scaling the Deployment %s:%s from %d pod(s) to %d pod(s)",
 			deploymentItem.Namespace, deploymentItem.Name,
-			*deploymentItem.Spec.Replicas))
+			*deploymentItem.Spec.Replicas,
+			spec.Replicas))
+		replicas := int32(spec.Replicas)
+		deploymentItem.Spec.Replicas = &replicas
+		if err := c.Update(ctx, &deploymentItem); err != nil {
+			log.Error(err, fmt.Sprintf("could not update the Deployment %s:%s", deploymentItem.Namespace, deploymentItem.Name))
+			return err
+		}
 	}
-
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *ScheduledPodScalerReconciler) SetupWithManager(mgr ctrl.Manager) error {
