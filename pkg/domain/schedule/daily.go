@@ -6,11 +6,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// Now provides the current time.
-type Now interface {
-	Now() time.Time
-}
-
 // NewDailyRange returns a DailyRange with the given range.
 func NewDailyRange(startTime, endTime string) (*DailyRange, error) {
 	b := time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -34,10 +29,10 @@ type DailyRange struct {
 	EndTime   time.Duration
 }
 
-// IsActive returns true if the current time is in the range.
-func (d *DailyRange) IsActive(n Now) bool {
-	now := n.Now()
-	today := now.Truncate(24 * time.Hour)
-	todayTime := now.Sub(today)
-	return d.StartTime < todayTime && todayTime < d.EndTime
+// IsActive returns true if t is in the range.
+// This function depends on the timezone of t.
+func (d *DailyRange) IsActive(t time.Time) bool {
+	day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	since := t.Sub(day)
+	return d.StartTime < since && since < d.EndTime
 }
