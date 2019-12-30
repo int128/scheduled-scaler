@@ -1,64 +1,59 @@
 package reconcile
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-logr/logr"
-	scheduledscalingv1 "github.com/int128/scheduled-scaler/api/v1"
+	"github.com/google/wire"
 	"github.com/int128/scheduled-scaler/pkg/domain/schedule"
+	"github.com/int128/scheduled-scaler/pkg/infrastructure/clock"
+	"github.com/int128/scheduled-scaler/pkg/repositories/scheduledpodscaler"
 	"golang.org/x/xerrors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-type TimeProvider interface {
-	Now() time.Time
+var Set = wire.NewSet(
+	wire.Bind(new(Interface), new(*Reconcile)),
+	wire.Struct(new(Reconcile), "*"),
+)
+
+type Interface interface {
+	Do(ctx context.Context, in Input) (*Output, error)
 }
 
 type Reconcile struct {
-	Log          logr.Logger
-	TimeProvider TimeProvider
+	Log                          logr.Logger
+	Clock                        clock.Interface
+	ScheduledPodScalerRepository scheduledpodscaler.Interface
 }
 
 type Input struct {
-	ScheduledPodScalerList scheduledscalingv1.ScheduledPodScalerList
-}
-
-type ScaleCommand struct {
-	ScaleTargetRef scheduledscalingv1.ScaleTargetRef
-	Spec           scheduledscalingv1.Spec
+	Target types.NamespacedName
 }
 
 type Output struct {
-	ScaleCommands     []*ScaleCommand
-	NextReconcileTime time.Time
+	NextReconcileAfter time.Duration
 }
 
-func (r *Reconcile) Do(in Input) (*Output, error) {
-	var output Output
-	for _, scheduledPodScaler := range in.ScheduledPodScalerList.Items {
-		result, err := r.process(scheduledPodScaler)
-		if err != nil {
-			return nil, xerrors.Errorf("could not process the ScheduledPodScaler: %w", err)
-		}
+type retryableError struct {
+	error
+}
 
-		if output.NextReconcileTime.IsZero() || result.nextReconcileTime.Before(output.NextReconcileTime) {
-			output.NextReconcileTime = result.nextReconcileTime
-		}
-		if result.scaleCommand != nil {
-			output.ScaleCommands = append(output.ScaleCommands, result.scaleCommand)
+func (e *retryableError) IsRetryable() bool {
+	return true
+}
+
+func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
+	scheduledPodScaler, err := r.ScheduledPodScalerRepository.Get(ctx, in.Target)
+	if err != nil {
+		return nil, &retryableError{
+			error: xerrors.Errorf("could not get the ScheduledPodScaler: %w", err),
 		}
 	}
-	return &output, nil
-}
 
-type processResult struct {
-	scaleCommand      *ScaleCommand
-	nextReconcileTime time.Time
-}
-
-func (r *Reconcile) process(scheduledPodScaler scheduledscalingv1.ScheduledPodScaler) (*processResult, error) {
-	now := r.TimeProvider.Now()
-	var result processResult
-
+	var output Output
+	now := r.Clock.Now()
 	for _, rule := range scheduledPodScaler.Spec.Rules {
 		var rng schedule.Range
 		var err error
@@ -70,16 +65,13 @@ func (r *Reconcile) process(scheduledPodScaler scheduledscalingv1.ScheduledPodSc
 			}
 		}
 
-		if result.scaleCommand == nil && rng.IsActive(now) {
-			result.scaleCommand = &ScaleCommand{
-				ScaleTargetRef: scheduledPodScaler.Spec.ScaleTargetRef,
-				Spec:           rule.Spec,
-			}
-		}
-		edge := rng.NextEdge(now)
-		if result.nextReconcileTime.IsZero() || edge.Before(result.nextReconcileTime) {
-			result.nextReconcileTime = edge
+		next := rng.NextEdge(now).Sub(now)
+		if output.NextReconcileAfter == 0 || next < output.NextReconcileAfter {
+			output.NextReconcileAfter = next
 		}
 	}
-	return &result, nil
+
+	//TODO: update the status
+
+	return &output, nil
 }
