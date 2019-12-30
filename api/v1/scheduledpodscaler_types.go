@@ -57,9 +57,12 @@ type Spec struct {
 type ScheduledPodScalerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	NextReconcileTime string `json:"nextReconcileTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // ScheduledPodScaler is the Schema for the scheduledpodscalers API
 type ScheduledPodScaler struct {

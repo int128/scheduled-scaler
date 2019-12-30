@@ -15,6 +15,8 @@ spec:
     plural: scheduledpodscalers
     singular: scheduledpodscaler
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       description: ScheduledPodScaler is the Schema for the scheduledpodscalers API
@@ -62,6 +64,9 @@ spec:
           type: object
         status:
           description: ScheduledPodScalerStatus defines the observed state of ScheduledPodScaler
+          properties:
+            nextReconcileTime:
+              type: string
           type: object
       type: object
   version: v1

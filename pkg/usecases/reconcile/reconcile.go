@@ -52,7 +52,7 @@ func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
 		}
 	}
 
-	var output Output
+	var nextReconcileTime time.Time
 	now := r.Clock.Now()
 	for _, rule := range scheduledPodScaler.Spec.Rules {
 		var rng schedule.Range
@@ -65,13 +65,18 @@ func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
 			}
 		}
 
-		next := rng.NextEdge(now).Sub(now)
-		if output.NextReconcileAfter == 0 || next < output.NextReconcileAfter {
-			output.NextReconcileAfter = next
+		edge := rng.NextEdge(now)
+		if nextReconcileTime.IsZero() || edge.Before(nextReconcileTime) {
+			nextReconcileTime = edge
 		}
 	}
 
-	//TODO: update the status
+	scheduledPodScaler.Status.NextReconcileTime = nextReconcileTime.Format(time.RFC3339)
+	if err := r.ScheduledPodScalerRepository.UpdateStatus(ctx, scheduledPodScaler); err != nil {
+		return nil, &retryableError{
+			error: xerrors.Errorf("could not update the status of ScheduledPodScaler: %w", err),
+		}
+	}
 
-	return &output, nil
+	return &Output{NextReconcileAfter: nextReconcileTime.Sub(now)}, nil
 }

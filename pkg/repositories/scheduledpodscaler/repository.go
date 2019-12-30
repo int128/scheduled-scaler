@@ -19,7 +19,7 @@ var Set = wire.NewSet(
 
 type Interface interface {
 	Get(ctx context.Context, name types.NamespacedName) (*scheduledscalingv1.ScheduledPodScaler, error)
-	UpdateStatus(ctx context.Context, o scheduledscalingv1.ScheduledPodScaler) error
+	UpdateStatus(ctx context.Context, o *scheduledscalingv1.ScheduledPodScaler) error
 }
 
 type Repository struct {
@@ -34,8 +34,8 @@ func (r *Repository) Get(ctx context.Context, name types.NamespacedName) (*sched
 	return &o, nil
 }
 
-func (r *Repository) UpdateStatus(ctx context.Context, o scheduledscalingv1.ScheduledPodScaler) error {
-	if err := r.Client.Status().Update(ctx, &o); err != nil {
+func (r *Repository) UpdateStatus(ctx context.Context, o *scheduledscalingv1.ScheduledPodScaler) error {
+	if err := r.Client.Status().Update(ctx, o); err != nil {
 		return xerrors.Errorf("could not update the status: %w", err)
 	}
 	return nil
