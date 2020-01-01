@@ -7,7 +7,7 @@ package mock_scheduledpodscaler
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
-	v1 "github.com/int128/scheduled-scaler/api/v1"
+	scheduledpodscaler "github.com/int128/scheduled-scaler/pkg/domain/scheduledpodscaler"
 	types "k8s.io/apimachinery/pkg/types"
 	reflect "reflect"
 )
@@ -36,10 +36,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // Get mocks base method
-func (m *MockInterface) Get(arg0 context.Context, arg1 types.NamespacedName) (*v1.ScheduledPodScaler, error) {
+func (m *MockInterface) Get(arg0 context.Context, arg1 types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
-	ret0, _ := ret[0].(*v1.ScheduledPodScaler)
+	ret0, _ := ret[0].(*scheduledpodscaler.ScheduledPodScaler)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -51,7 +51,7 @@ func (mr *MockInterfaceMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // UpdateStatus mocks base method
-func (m *MockInterface) UpdateStatus(arg0 context.Context, arg1 *v1.ScheduledPodScaler) error {
+func (m *MockInterface) UpdateStatus(arg0 context.Context, arg1 *scheduledpodscaler.ScheduledPodScaler) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateStatus", arg0, arg1)
 	ret0, _ := ret[0].(error)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
-	"github.com/int128/scheduled-scaler/pkg/domain/schedule"
 	"github.com/int128/scheduled-scaler/pkg/infrastructure/clock"
 	"github.com/int128/scheduled-scaler/pkg/repositories/scheduledpodscaler"
 	"golang.org/x/xerrors"
@@ -47,36 +46,20 @@ func (e *retryableError) IsRetryable() bool {
 func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
 	scheduledPodScaler, err := r.ScheduledPodScalerRepository.Get(ctx, in.Target)
 	if err != nil {
+		//TODO: do not retry for the not found error
 		return nil, &retryableError{
 			error: xerrors.Errorf("could not get the ScheduledPodScaler: %w", err),
 		}
 	}
 
-	var nextReconcileTime time.Time
 	now := r.Clock.Now()
-	for _, rule := range scheduledPodScaler.Spec.Rules {
-		var rng schedule.Range
-		var err error
-		switch {
-		case rule.Daily != nil:
-			rng, err = schedule.NewDailyRange(rule.Daily.StartTime, rule.Daily.EndTime)
-			if err != nil {
-				return nil, xerrors.Errorf("invalid daily syntax: %w", err)
-			}
-		}
+	scheduledPodScaler.Spec.ComputeDesiredScaleSpec(now) //TODO: scale the target
+	scheduledPodScaler.Status.NextReconcileTime = scheduledPodScaler.Spec.FindNextReconcileTime(now)
 
-		edge := rng.NextEdge(now)
-		if nextReconcileTime.IsZero() || edge.Before(nextReconcileTime) {
-			nextReconcileTime = edge
-		}
-	}
-
-	scheduledPodScaler.Status.NextReconcileTime = nextReconcileTime.Format(time.RFC3339)
 	if err := r.ScheduledPodScalerRepository.UpdateStatus(ctx, scheduledPodScaler); err != nil {
 		return nil, &retryableError{
 			error: xerrors.Errorf("could not update the status of ScheduledPodScaler: %w", err),
 		}
 	}
-
-	return &Output{NextReconcileAfter: nextReconcileTime.Sub(now)}, nil
+	return &Output{NextReconcileAfter: scheduledPodScaler.Status.NextReconcileTime.Sub(now)}, nil
 }
