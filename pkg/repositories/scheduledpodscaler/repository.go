@@ -56,11 +56,13 @@ func (r *Repository) Get(ctx context.Context, name types.NamespacedName) (*sched
 	}
 	s.Spec.ScaleTarget.Selectors = o.Spec.ScaleTargetRef.Selectors
 
-	t, err := time.Parse(time.RFC3339, o.Status.NextReconcileTime)
-	if err != nil {
-		return nil, xerrors.Errorf("could not parse Status.NextReconcileTime: %w", err)
+	if o.Status.NextReconcileTime != "" {
+		t, err := time.Parse(time.RFC3339, o.Status.NextReconcileTime)
+		if err != nil {
+			return nil, xerrors.Errorf("could not parse Status.NextReconcileTime: %w", err)
+		}
+		s.Status.NextReconcileTime = t
 	}
-	s.Status.NextReconcileTime = t
 
 	return &s, nil
 }
