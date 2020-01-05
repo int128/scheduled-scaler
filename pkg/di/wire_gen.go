@@ -24,6 +24,7 @@ func NewController(logger logr.Logger, clockInterface clock.Interface, clientCli
 		Log:                          logger,
 		Clock:                        clockInterface,
 		ScheduledPodScalerRepository: repository,
+		Client:                       clientClient,
 	}
 	controllerController := &controller.Controller{
 		Log:     logger,
