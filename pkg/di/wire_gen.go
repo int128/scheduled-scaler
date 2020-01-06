@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/int128/scheduled-scaler/pkg/infrastructure/clock"
 	"github.com/int128/scheduled-scaler/pkg/infrastructure/controller"
+	"github.com/int128/scheduled-scaler/pkg/repositories/deployment"
 	"github.com/int128/scheduled-scaler/pkg/repositories/scheduledpodscaler"
 	"github.com/int128/scheduled-scaler/pkg/usecases/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,11 +21,14 @@ func NewController(logger logr.Logger, clockInterface clock.Interface, clientCli
 	repository := &scheduledpodscaler.Repository{
 		Client: clientClient,
 	}
+	deploymentRepository := &deployment.Repository{
+		Client: clientClient,
+	}
 	reconcileReconcile := &reconcile.Reconcile{
 		Log:                          logger,
 		Clock:                        clockInterface,
 		ScheduledPodScalerRepository: repository,
-		Client:                       clientClient,
+		DeploymentRepository:         deploymentRepository,
 	}
 	controllerController := &controller.Controller{
 		Log:     logger,

@@ -2,18 +2,17 @@ package reconcile
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
 	"github.com/int128/scheduled-scaler/pkg/infrastructure/clock"
+	"github.com/int128/scheduled-scaler/pkg/repositories/deployment"
 	"github.com/int128/scheduled-scaler/pkg/repositories/scheduledpodscaler"
 	"golang.org/x/xerrors"
-	kapps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/utils/pointer"
 )
 
 var Set = wire.NewSet(
@@ -29,10 +28,7 @@ type Reconcile struct {
 	Log                          logr.Logger
 	Clock                        clock.Interface
 	ScheduledPodScalerRepository scheduledpodscaler.Interface
-	//DeploymentRepository         deployment.Interface
-
-	//FIXME: do not expose the client to the use-case
-	Client client.Client
+	DeploymentRepository         deployment.Interface
 }
 
 type Input struct {
@@ -60,40 +56,27 @@ func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
 		}
 	}
 
+	selectors := scheduledPodScaler.Spec.ScaleTarget.Selectors
+	deploymentList, err := r.DeploymentRepository.FindBySelectors(ctx, selectors)
+	if err != nil {
+		return nil, xerrors.Errorf("could not find the deployments: %w", err)
+	}
+	r.Log.Info(fmt.Sprintf("found %d deployments", len(deploymentList.Items)), "selectors", selectors)
+
 	now := r.Clock.Now()
 	desiredScaleSpec := scheduledPodScaler.Spec.ComputeDesiredScaleSpec(now)
+	for _, deploymentItem := range deploymentList.Items {
+		currentReplicas := pointer.Int32PtrDerefOr(deploymentItem.Spec.Replicas, 0)
+		r.Log.Info("comparing the replicas", "current", currentReplicas, "desired", desiredScaleSpec.Replicas)
+		if currentReplicas != desiredScaleSpec.Replicas {
+			r.Log.Info("applying the patch to the deployment", "replicas", currentReplicas)
+			if err := r.DeploymentRepository.Scale(ctx, &deploymentItem, desiredScaleSpec.Replicas); err != nil {
+				return nil, xerrors.Errorf("could not scale the deployment: %w", err)
+			}
+		}
+	}
+
 	scheduledPodScaler.Status.NextReconcileTime = scheduledPodScaler.Spec.FindNextReconcileTime(now)
-
-	//TODO: extract repositories
-	selectors := scheduledPodScaler.Spec.ScaleTarget.Selectors
-	var l kapps.DeploymentList
-	if err := r.Client.List(ctx, &l, client.MatchingLabels(selectors)); err != nil {
-		return nil, xerrors.Errorf("could not list the Deployments: %w", err)
-	}
-	r.Log.Info(fmt.Sprintf("found %d deployments", len(l.Items)))
-	for _, deployment := range l.Items {
-		var replicas int32
-		if deployment.Spec.Replicas != nil {
-			replicas = *(deployment.Spec.Replicas)
-		}
-		r.Log.Info(fmt.Sprintf("comparing the replicas: got=%d, want=%d", replicas, desiredScaleSpec.Replicas))
-		if desiredScaleSpec.Replicas != replicas {
-			mergePatch, err := json.Marshal(map[string]interface{}{
-				"spec": map[string]interface{}{
-					"replicas": desiredScaleSpec.Replicas,
-				},
-			})
-			if err != nil {
-				return nil, xerrors.Errorf("could not create a merge patch: %w", err)
-			}
-			patch := client.ConstantPatch(types.MergePatchType, mergePatch)
-			r.Log.Info("applying the patch to the Deployment", "mergePatch", string(mergePatch))
-			if err := r.Client.Patch(ctx, &deployment, patch); err != nil {
-				return nil, xerrors.Errorf("could not patch the Deployment: %w", err)
-			}
-		}
-	}
-
 	if err := r.ScheduledPodScalerRepository.UpdateStatus(ctx, scheduledPodScaler); err != nil {
 		return nil, &retryableError{
 			error: xerrors.Errorf("could not update the status of ScheduledPodScaler: %w", err),

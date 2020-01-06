@@ -8,6 +8,7 @@ import (
 	"github.com/google/wire"
 	"github.com/int128/scheduled-scaler/pkg/infrastructure/clock"
 	"github.com/int128/scheduled-scaler/pkg/infrastructure/controller"
+	"github.com/int128/scheduled-scaler/pkg/repositories/deployment"
 	"github.com/int128/scheduled-scaler/pkg/repositories/scheduledpodscaler"
 	"github.com/int128/scheduled-scaler/pkg/usecases/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +21,7 @@ func NewController(logr.Logger, clock.Interface, client.Client) controller.Inter
 
 		// repositories
 		scheduledpodscaler.Set,
+		deployment.Set,
 
 		// infrastructure
 		controller.Set,
