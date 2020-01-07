@@ -48,7 +48,7 @@ func (e *retryableError) IsRetryable() bool {
 }
 
 func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
-	scheduledPodScaler, err := r.ScheduledPodScalerRepository.Get(ctx, in.Target)
+	scheduledPodScaler, err := r.ScheduledPodScalerRepository.GetByName(ctx, in.Target)
 	if err != nil {
 		//TODO: do not retry for the not found error
 		return nil, &retryableError{

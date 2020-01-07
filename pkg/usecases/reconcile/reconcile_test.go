@@ -30,7 +30,7 @@ func TestReconcile_Do(t *testing.T) {
 
 	mockScheduledPodScalerRepository := mock_scheduledpodscaler.NewMockInterface(ctrl)
 	mockScheduledPodScalerRepository.EXPECT().
-		Get(gomock.Not(nil), types.NamespacedName{
+		GetByName(gomock.Not(nil), types.NamespacedName{
 			Namespace: "fixture",
 			Name:      "example1",
 		}).

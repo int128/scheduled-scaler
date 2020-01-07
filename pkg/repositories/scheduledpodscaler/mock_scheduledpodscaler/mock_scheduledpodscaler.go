@@ -35,19 +35,19 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
-// Get mocks base method
-func (m *MockInterface) Get(arg0 context.Context, arg1 types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error) {
+// GetByName mocks base method
+func (m *MockInterface) GetByName(arg0 context.Context, arg1 types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetByName", arg0, arg1)
 	ret0, _ := ret[0].(*scheduledpodscaler.ScheduledPodScaler)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Get indicates an expected call of Get
-func (mr *MockInterfaceMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
+// GetByName indicates an expected call of GetByName
+func (mr *MockInterfaceMockRecorder) GetByName(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockInterface)(nil).Get), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByName", reflect.TypeOf((*MockInterface)(nil).GetByName), arg0, arg1)
 }
 
 // UpdateStatus mocks base method

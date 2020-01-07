@@ -21,7 +21,7 @@ var Set = wire.NewSet(
 //go:generate mockgen -destination mock_scheduledpodscaler/mock_scheduledpodscaler.go github.com/int128/scheduled-scaler/pkg/repositories/scheduledpodscaler Interface
 
 type Interface interface {
-	Get(ctx context.Context, name types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error)
+	GetByName(ctx context.Context, name types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error)
 	UpdateStatus(ctx context.Context, s *scheduledpodscaler.ScheduledPodScaler) error
 }
 
@@ -29,7 +29,8 @@ type Repository struct {
 	Client client.Client
 }
 
-func (r *Repository) Get(ctx context.Context, name types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error) {
+// GetByName returns the ScheduledPodScaler of the name.
+func (r *Repository) GetByName(ctx context.Context, name types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error) {
 	var o scheduledscalingv1.ScheduledPodScaler
 	if err := r.Client.Get(ctx, name, &o); err != nil {
 		return nil, xerrors.Errorf("could not get the item: %w", err)
@@ -67,6 +68,7 @@ func (r *Repository) Get(ctx context.Context, name types.NamespacedName) (*sched
 	return &s, nil
 }
 
+// UpdateStatus updates the status. It does not update the spec.
 func (r *Repository) UpdateStatus(ctx context.Context, s *scheduledpodscaler.ScheduledPodScaler) error {
 	var o scheduledscalingv1.ScheduledPodScaler
 	o.TypeMeta, o.ObjectMeta = s.TypeMeta, s.ObjectMeta
