@@ -3,12 +3,14 @@ kind: ScheduledPodScaler
 metadata:
   name: scheduledpodscaler-sample
 spec:
-  scaleTargetRef:
+  scaleTarget:
     selectors:
       app: echoserver
-  rules:
+  schedule:
     - daily:
         startTime: 20:46:00
         endTime: 20:50:00
       spec:
         replicas: 10
+  default:
+    replicas: 1

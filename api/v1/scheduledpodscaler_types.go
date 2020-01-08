@@ -25,31 +25,35 @@ import (
 
 // ScheduledPodScalerSpec defines the desired state of ScheduledPodScaler
 type ScheduledPodScalerSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	ScaleTargetRef ScaleTargetRef `json:"scaleTargetRef,omitempty"`
-
-	Rules []Rule `json:"rules,omitempty"`
+	ScaleTarget      ScaleTarget `json:"scaleTarget,omitempty"`
+	ScaleRules       []ScaleRule `json:"schedule,omitempty"`
+	DefaultScaleSpec ScaleSpec   `json:"default,omitempty"`
 }
 
-type ScaleTargetRef struct {
+// ScaleTarget represents the resource to scale.
+// For now only Deployment is supported.
+type ScaleTarget struct {
 	// +optional
 	Selectors map[string]string `json:"selectors,omitempty"`
 }
 
-type Rule struct {
-	Spec Spec `json:"spec,omitempty"`
+// ScaleRule represents a rule of scaling schedule.
+type ScaleRule struct {
+	ScaleSpec ScaleSpec `json:"spec,omitempty"`
 	// +optional
-	Daily *Daily `json:"daily,omitempty"`
+	Daily *DailyRule `json:"daily,omitempty"`
 }
 
-type Daily struct {
+// DailyRule represents a rule to apply everyday.
+type DailyRule struct {
+	// Time format in 00:00:00.
+	// If EndTime < StartTime, it treats the EndTime as the next day.
 	StartTime string `json:"startTime,omitempty"`
 	EndTime   string `json:"endTime,omitempty"`
 }
 
-type Spec struct {
+// ScaleSpec represents the desired state to scale the resource.
+type ScaleSpec struct {
 	Replicas int32 `json:"replicas,omitempty"`
 }
 

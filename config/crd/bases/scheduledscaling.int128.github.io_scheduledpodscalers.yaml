@@ -36,17 +36,39 @@ spec:
         spec:
           description: ScheduledPodScalerSpec defines the desired state of ScheduledPodScaler
           properties:
-            rules:
+            default:
+              description: ScaleSpec represents the desired state to scale the resource.
+              properties:
+                replicas:
+                  format: int32
+                  type: integer
+              type: object
+            scaleTarget:
+              description: ScaleTarget represents the resource to scale. For now only
+                Deployment is supported.
+              properties:
+                selectors:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+            schedule:
               items:
+                description: ScaleRule represents a rule of scaling schedule.
                 properties:
                   daily:
+                    description: DailyRule represents a rule to apply everyday.
                     properties:
                       endTime:
                         type: string
                       startTime:
+                        description: Time format in 00:00:00. If EndTime < StartTime,
+                          it treats the EndTime as the next day.
                         type: string
                     type: object
                   spec:
+                    description: ScaleSpec represents the desired state to scale the
+                      resource.
                     properties:
                       replicas:
                         format: int32
@@ -54,13 +76,6 @@ spec:
                     type: object
                 type: object
               type: array
-            scaleTargetRef:
-              properties:
-                selectors:
-                  additionalProperties:
-                    type: string
-                  type: object
-              type: object
           type: object
         status:
           description: ScheduledPodScalerStatus defines the observed state of ScheduledPodScaler

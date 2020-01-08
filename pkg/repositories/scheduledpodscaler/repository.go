@@ -39,7 +39,9 @@ func (r *Repository) GetByName(ctx context.Context, name types.NamespacedName) (
 	var s scheduledpodscaler.ScheduledPodScaler
 	s.TypeMeta, s.ObjectMeta = o.TypeMeta, o.ObjectMeta
 
-	for _, rule := range o.Spec.Rules {
+	s.Spec.ScaleTarget.Selectors = o.Spec.ScaleTarget.Selectors
+
+	for _, rule := range o.Spec.ScaleRules {
 		var rng schedule.Range
 		var err error
 		switch {
@@ -48,15 +50,18 @@ func (r *Repository) GetByName(ctx context.Context, name types.NamespacedName) (
 			if err != nil {
 				return nil, xerrors.Errorf("invalid daily syntax: %w", err)
 			}
+		default:
+			return nil, xerrors.Errorf("currently only daily is supported")
 		}
 		s.Spec.ScaleRules = append(s.Spec.ScaleRules, scheduledpodscaler.ScaleRule{
 			Range: rng,
 			ScaleSpec: scheduledpodscaler.ScaleSpec{
-				Replicas: rule.Spec.Replicas,
+				Replicas: rule.ScaleSpec.Replicas,
 			},
 		})
 	}
-	s.Spec.ScaleTarget.Selectors = o.Spec.ScaleTargetRef.Selectors
+
+	s.Spec.DefaultScaleSpec.Replicas = o.Spec.DefaultScaleSpec.Replicas
 
 	if o.Status.NextReconcileTime != "" {
 		t, err := time.Parse(time.RFC3339, o.Status.NextReconcileTime)
