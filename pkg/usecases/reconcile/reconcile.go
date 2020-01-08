@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
+	"github.com/int128/scheduled-scaler/pkg/domain/errors"
 	"github.com/int128/scheduled-scaler/pkg/infrastructure/clock"
 	"github.com/int128/scheduled-scaler/pkg/repositories/deployment"
 	"github.com/int128/scheduled-scaler/pkg/repositories/scheduledpodscaler"
@@ -39,21 +40,14 @@ type Output struct {
 	NextReconcileAfter time.Duration
 }
 
-type retryableError struct {
-	error
-}
-
-func (e *retryableError) IsRetryable() bool {
-	return true
-}
-
 func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
 	scheduledPodScaler, err := r.ScheduledPodScalerRepository.GetByName(ctx, in.Target)
 	if err != nil {
-		//TODO: do not retry for the not found error
-		return nil, &retryableError{
-			error: xerrors.Errorf("could not get the ScheduledPodScaler: %w", err),
+		if errors.IsNotFound(err) {
+			r.Log.Info("the ScheduledPodScaler has already removed and ended up", "error", err)
+			return &Output{NextReconcileAfter: 0}, nil
 		}
+		return nil, xerrors.Errorf("could not get the ScheduledPodScaler: %w", err)
 	}
 
 	selectors := scheduledPodScaler.Spec.ScaleTarget.Selectors
@@ -78,9 +72,7 @@ func (r *Reconcile) Do(ctx context.Context, in Input) (*Output, error) {
 
 	scheduledPodScaler.Status.NextReconcileTime = scheduledPodScaler.Spec.FindNextReconcileTime(now)
 	if err := r.ScheduledPodScalerRepository.UpdateStatus(ctx, scheduledPodScaler); err != nil {
-		return nil, &retryableError{
-			error: xerrors.Errorf("could not update the status of ScheduledPodScaler: %w", err),
-		}
+		return nil, xerrors.Errorf("could not update the status of ScheduledPodScaler: %w", err)
 	}
 	return &Output{NextReconcileAfter: scheduledPodScaler.Status.NextReconcileTime.Sub(now)}, nil
 }

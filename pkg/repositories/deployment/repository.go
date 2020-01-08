@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/wire"
+	"github.com/int128/scheduled-scaler/pkg/infrastructure/errors"
 	"golang.org/x/xerrors"
 	kapps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,7 +32,7 @@ type Repository struct {
 func (r *Repository) FindBySelectors(ctx context.Context, selectors map[string]string) (*kapps.DeploymentList, error) {
 	var l kapps.DeploymentList
 	if err := r.Client.List(ctx, &l, client.MatchingLabels(selectors)); err != nil {
-		return nil, xerrors.Errorf("could not list the Deployments: %w", err)
+		return nil, errors.Wrap(err)
 	}
 	return &l, nil
 }
@@ -48,7 +49,7 @@ func (r *Repository) Scale(ctx context.Context, deployment *kapps.Deployment, re
 	}
 	p := client.ConstantPatch(types.MergePatchType, b)
 	if err := r.Client.Patch(ctx, deployment, p); err != nil {
-		return xerrors.Errorf("could not patch the deployment: %w", err)
+		return errors.Wrap(err)
 	}
 	deployment.Spec.Replicas = &replicas
 	return nil

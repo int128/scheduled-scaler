@@ -8,6 +8,7 @@ import (
 	scheduledscalingv1 "github.com/int128/scheduled-scaler/api/v1"
 	"github.com/int128/scheduled-scaler/pkg/domain/schedule"
 	"github.com/int128/scheduled-scaler/pkg/domain/scheduledpodscaler"
+	"github.com/int128/scheduled-scaler/pkg/infrastructure/errors"
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,7 +34,7 @@ type Repository struct {
 func (r *Repository) GetByName(ctx context.Context, name types.NamespacedName) (*scheduledpodscaler.ScheduledPodScaler, error) {
 	var o scheduledscalingv1.ScheduledPodScaler
 	if err := r.Client.Get(ctx, name, &o); err != nil {
-		return nil, xerrors.Errorf("could not get the item: %w", err)
+		return nil, errors.Wrap(err)
 	}
 	var s scheduledpodscaler.ScheduledPodScaler
 	s.TypeMeta, s.ObjectMeta = o.TypeMeta, o.ObjectMeta
@@ -76,7 +77,7 @@ func (r *Repository) UpdateStatus(ctx context.Context, s *scheduledpodscaler.Sch
 	o.Status.NextReconcileTime = s.Status.NextReconcileTime.Format(time.RFC3339)
 
 	if err := r.Client.Status().Update(ctx, &o); err != nil {
-		return xerrors.Errorf("could not update the status: %w", err)
+		return errors.Wrap(err)
 	}
 	return nil
 }
