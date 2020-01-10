@@ -1,0 +1,7 @@
+bases:
+- ../config/default
+
+images:
+- name: controller
+  newName: quay.io/int128/scheduled-scaler
+  newTag: v0.1.0
