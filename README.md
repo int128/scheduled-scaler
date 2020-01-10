@@ -1,4 +1,4 @@
-# scheduled-scaler
+# scheduled-scaler [![CircleCI](https://circleci.com/gh/int128/scheduled-scaler/tree/master.svg?style=shield)](https://circleci.com/gh/int128/scheduled-scaler/tree/master)
 
 This is a Kubernetes operator for scheduled scaling of deployments.
 
