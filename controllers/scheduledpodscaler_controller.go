@@ -39,6 +39,8 @@ type ScheduledPodScalerReconciler struct {
 // +kubebuilder:rbac:groups=scheduledscaling.int128.github.io,resources=scheduledpodscalers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=scheduledscaling.int128.github.io,resources=scheduledpodscalers/status,verbs=get;update;patch
 
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;patch
+
 func (r *ScheduledPodScalerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("scheduledpodscaler", req.NamespacedName)
