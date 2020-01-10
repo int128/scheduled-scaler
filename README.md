@@ -1,4 +1,4 @@
-# scheduled-scaler [![CircleCI](https://circleci.com/gh/int128/scheduled-scaler/tree/master.svg?style=shield)](https://circleci.com/gh/int128/scheduled-scaler/tree/master)
+# scheduled-scaler [![CircleCI](https://circleci.com/gh/int128/scheduled-scaler/tree/master.svg?style=shield)](https://circleci.com/gh/int128/scheduled-scaler/tree/master) [![Docker Repository on Quay](https://quay.io/repository/int128/scheduled-scaler/status "Docker Repository on Quay")](https://quay.io/repository/int128/scheduled-scaler)
 
 This is a Kubernetes operator for scheduled scaling of deployments.
 
