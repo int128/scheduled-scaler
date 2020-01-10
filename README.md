@@ -7,12 +7,16 @@ This is a Kubernetes operator for scheduled scaling of deployments.
 
 ## Getting Started
 
-### Install
+### Deploy
 
-(TODO)
+You can deploy the resources from [`deploy/scheduled-scaler.yaml`](deploy/scheduled-scaler.yaml).
+
+```sh
+kubectl apply -f https://raw.githubusercontent.com/int128/scheduled-scaler/master/deploy/scheduled-scaler.yaml
+```
 
 
-### Add a scaler
+### Create a scaler
 
 This tutorial shows how you can schedule a scaling of a deployment.
 
@@ -55,6 +59,18 @@ Make sure the replicas of the deployment is the desired state.
 
 ```sh
 kubectl -n echoserver get deployment
+```
+
+
+## Development
+
+```sh
+# Deploy the image to the kind cluster
+make docker-load-kind
+make deploy
+
+# Undeploy from the kind cluster
+make undeploy
 ```
 
 

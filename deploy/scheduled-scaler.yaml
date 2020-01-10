@@ -1,0 +1,288 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: scheduled-scaler-system
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.4
+  creationTimestamp: null
+  name: scheduledpodscalers.scheduledscaling.int128.github.io
+spec:
+  group: scheduledscaling.int128.github.io
+  names:
+    kind: ScheduledPodScaler
+    listKind: ScheduledPodScalerList
+    plural: scheduledpodscalers
+    singular: scheduledpodscaler
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: ScheduledPodScaler is the Schema for the scheduledpodscalers API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ScheduledPodScalerSpec defines the desired state of ScheduledPodScaler
+          properties:
+            default:
+              description: ScaleSpec represents the desired state to scale the resource.
+              properties:
+                replicas:
+                  format: int32
+                  type: integer
+              type: object
+            scaleTarget:
+              description: ScaleTarget represents the resource to scale. For now only
+                Deployment is supported.
+              properties:
+                selectors:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+            schedule:
+              items:
+                description: ScaleRule represents a rule of scaling schedule.
+                properties:
+                  daily:
+                    description: DailyRule represents a rule to apply everyday.
+                    properties:
+                      endTime:
+                        type: string
+                      startTime:
+                        description: Time format in 00:00:00. If EndTime < StartTime,
+                          it treats the EndTime as the next day.
+                        type: string
+                    type: object
+                  spec:
+                    description: ScaleSpec represents the desired state to scale the
+                      resource.
+                    properties:
+                      replicas:
+                        format: int32
+                        type: integer
+                    type: object
+                type: object
+              type: array
+          type: object
+        status:
+          description: ScheduledPodScalerStatus defines the observed state of ScheduledPodScaler
+          properties:
+            nextReconcileTime:
+              type: string
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scheduled-scaler-leader-election-role
+  namespace: scheduled-scaler-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: scheduled-scaler-manager-role
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - scheduledscaling.int128.github.io
+  resources:
+  - scheduledpodscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scheduledscaling.int128.github.io
+  resources:
+  - scheduledpodscalers/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scheduled-scaler-proxy-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scheduled-scaler-leader-election-rolebinding
+  namespace: scheduled-scaler-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: scheduled-scaler-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: scheduled-scaler-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scheduled-scaler-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scheduled-scaler-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: scheduled-scaler-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scheduled-scaler-proxy-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scheduled-scaler-proxy-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: scheduled-scaler-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: scheduled-scaler-controller-manager-metrics-service
+  namespace: scheduled-scaler-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: scheduled-scaler-controller-manager
+  namespace: scheduled-scaler-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --secure-listen-address=0.0.0.0:8443
+        - --upstream=http://127.0.0.1:8080/
+        - --logtostderr=true
+        - --v=10
+        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
+        name: kube-rbac-proxy
+        ports:
+        - containerPort: 8443
+          name: https
+      - args:
+        - --metrics-addr=127.0.0.1:8080
+        - --enable-leader-election
+        command:
+        - /manager
+        image: quay.io/int128/scheduled-scaler:v0.1.0
+        imagePullPolicy: IfNotPresent
+        name: manager
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+      terminationGracePeriodSeconds: 10

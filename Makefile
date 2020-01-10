@@ -61,6 +61,11 @@ generate: controller-gen
 docker-build: test
 	docker build . -t ${IMG}
 
+# Build and load the docker image to the kind cluster
+docker-load-kind:
+	docker build . -t ${IMG}
+	kind load docker-image ${IMG}
+
 # Push the docker image
 docker-push:
 	docker push ${IMG}
