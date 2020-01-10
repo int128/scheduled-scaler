@@ -28,6 +28,8 @@ spec:
         args:
         - --enable-leader-election
         image: controller:latest
+        # https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+        imagePullPolicy: IfNotPresent
         name: manager
         resources:
           limits:
