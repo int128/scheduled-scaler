@@ -1,0 +1,26 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.13.4
+    environment:
+      KUBEBUILDER_ASSETS: /tmp/kubebuilder/bin
+    steps:
+      # https://book.kubebuilder.io/quick-start.html
+      - run: |
+          os=$(go env GOOS)
+          arch=$(go env GOARCH)
+          curl -sL https://go.kubebuilder.io/dl/2.2.0/${os}/${arch} | tar -xz -C /tmp/
+          mv /tmp/kubebuilder_2.2.0_${os}_${arch} /tmp/kubebuilder
+      - checkout
+      - run: make test
+
+workflows:
+  version: 2
+  all:
+    jobs:
+      - build:
+          context: open-source
+          filters:
+            tags:
+              only: /.*/
