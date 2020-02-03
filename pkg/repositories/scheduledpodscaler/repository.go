@@ -53,8 +53,13 @@ func (r *Repository) GetByName(ctx context.Context, name types.NamespacedName) (
 		default:
 			return nil, xerrors.Errorf("currently only daily is supported")
 		}
+		tz, err := time.LoadLocation(rule.Timezone)
+		if err != nil {
+			return nil, xerrors.Errorf("invalid timezone: %w", err)
+		}
 		s.Spec.ScaleRules = append(s.Spec.ScaleRules, scheduledpodscaler.ScaleRule{
-			Range: rng,
+			Range:    rng,
+			Timezone: tz,
 			ScaleSpec: scheduledpodscaler.ScaleSpec{
 				Replicas: rule.ScaleSpec.Replicas,
 			},
