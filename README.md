@@ -41,6 +41,7 @@ spec:
     - daily:
         startTime: 21:00:00
         endTime: 07:00:00
+      timezone: Asia/Tokyo
       spec:
         replicas: 0
   default:

@@ -10,6 +10,7 @@ spec:
     - daily:
         startTime: 20:46:00
         endTime: 20:50:00
+      timezone: Asia/Tokyo
       spec:
         replicas: 10
   default:

@@ -74,6 +74,9 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  timezone:
+                    description: Timezone, default to UTC.
+                    type: string
                 type: object
               type: array
           type: object

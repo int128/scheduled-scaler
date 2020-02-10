@@ -40,6 +40,9 @@ type ScaleTarget struct {
 // ScaleRule represents a rule of scaling schedule.
 type ScaleRule struct {
 	ScaleSpec ScaleSpec `json:"spec,omitempty"`
+	// Timezone, default to UTC.
+	// +optional
+	Timezone string `json:"timezone,omitempty"`
 	// +optional
 	Daily *DailyRule `json:"daily,omitempty"`
 }

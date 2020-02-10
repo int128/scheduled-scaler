@@ -44,6 +44,7 @@ func TestReconcile_Do(t *testing.T) {
 							StartTime: 12 * time.Hour,
 							EndTime:   19 * time.Hour,
 						},
+						Timezone: time.UTC,
 						ScaleSpec: scheduledpodscaler.ScaleSpec{
 							Replicas: 5,
 						},
@@ -122,6 +123,7 @@ func TestReconcile_Do(t *testing.T) {
 							StartTime: 12 * time.Hour,
 							EndTime:   19 * time.Hour,
 						},
+						Timezone: time.UTC,
 						ScaleSpec: scheduledpodscaler.ScaleSpec{
 							Replicas: 5,
 						},
