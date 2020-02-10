@@ -79,6 +79,9 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  timezone:
+                    description: Timezone, default to UTC.
+                    type: string
                 type: object
               type: array
           type: object
@@ -275,7 +278,7 @@ spec:
         - --enable-leader-election
         command:
         - /manager
-        image: quay.io/int128/scheduled-scaler:v0.1.0
+        image: quay.io/int128/scheduled-scaler:v0.2.0
         imagePullPolicy: IfNotPresent
         name: manager
         resources:
